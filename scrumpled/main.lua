@@ -1,12 +1,19 @@
-local canvas
 local config = require 'config'
 local fire = require 'fire'
 local smoke = require 'smoke'
 local wind = require 'wind'
+local stars = require 'stars'
+local meteors = require 'meteors'
+
+local canvas
+local background
 
 local game = {
     fire = {},
-    smoke = {}
+    smoke = {},
+    stars = {},
+    meteors = {},
+    meteorCountDown = 0,
 }
 
 function love.load()
@@ -15,13 +22,24 @@ function love.load()
     love.graphics.setFont(love.graphics.newFont(config.font))
     love.graphics.setColor(1, 1, 1)
 
-    -- Set the window size
-    love.window.setMode(config.width * config.scale, config.height * config.scale)
+    -- load background image
+    background = love.graphics.newImage('images/bg2.png')
 
+    -- Set the window size
+    love.window.setMode(config.width * config.scale, config.height * config.scale, { borderless = true })
+
+    -- Set the window title
+    love.window.setTitle('Scrumpled')
+
+    -- Create the canvas
     canvas = love.graphics.newCanvas(config.width, config.height)
 
     -- Set filter to nearest
     canvas:setFilter('nearest', 'nearest')
+
+    for _ = 1, 50 do
+        table.insert(game.stars, stars.createStar())
+    end
 end
 
 function love.update(dt)
@@ -30,6 +48,11 @@ function love.update(dt)
 
     -- Update the wind
     wind:update()
+
+    -- Update the stars
+    for _, s in ipairs(game.stars) do
+        s:update()
+    end
 
     -- Update the fire particles
     for i, f in ipairs(game.fire) do
@@ -62,8 +85,22 @@ function love.update(dt)
     end
 
     -- Create fire particles
-    for i = 1, 10 do
-        table.insert(game.fire, fire.createFire(math.random(1, config.width), config.height - 2))
+    for i = 1, 5 do
+        table.insert(game.fire, fire.createFire(math.random(config.width / 2 - 7 + 15, config.width / 2 + 7 + 15),
+            config.height - 8))
+    end
+
+    -- Create meteor
+    if game.meteorCountDown <= 0 then
+        table.insert(game.meteors, meteors.createMeteor())
+        game.meteorCountDown = math.random(120, 180)
+    else
+        game.meteorCountDown = game.meteorCountDown - 1
+
+        -- Update the meteors
+        for i, m in ipairs(game.meteors) do
+            m:update()
+        end
     end
 end
 
@@ -75,13 +112,27 @@ function love.draw()
     love.graphics.setColor(1, 1, 1)
 
     -- Display the number of fire particles
-    love.graphics.print('Fire particles: ' .. #game.fire, 0, 0)
+    -- love.graphics.print('Fire particles: ' .. #game.fire, 0, 0)
 
     -- Set the canvas
     love.graphics.setCanvas(canvas)
 
     -- Clear the canvas
     love.graphics.clear()
+
+    -- Draw the background
+    love.graphics.draw(background, 0, 0)
+
+    -- Draw the stars
+    for _, s in ipairs(game.stars) do
+        love.graphics.setColor(s.color)
+        love.graphics.points(s.x, s.y)
+    end
+
+    -- Draw the meteors
+    for _, m in ipairs(game.meteors) do
+        m:draw()
+    end
 
     -- Draw the smoke
     for _, s in ipairs(game.smoke) do
